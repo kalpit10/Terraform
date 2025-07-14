@@ -21,3 +21,13 @@ variable "ssh_allowed_ips" {
   type        = list(string) // means it’s a list of CIDR strings like "0.0.0.0/0" or "203.0.113.5/32".
   default     = ["0.0.0.0/0"]
 }
+
+variable "instances" {
+  description = "Map of instance names to AMIs"
+  type        = map(string) // map creates key value
+  default = {
+    // key = value
+    "web1" = "ami-0c02fb55956c7d316"
+    "web2" = "ami-0c02fb55956c7d316"
+  }
+}

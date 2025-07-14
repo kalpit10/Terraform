@@ -15,17 +15,30 @@ provider "aws" {
 
 // --------EC2 Instances----------------
 
-resource "aws_instance" "myec2" {
-  ami           = var.ami           // This one is Amazon Linux 2 image in us-east-1 (free-tier)
-  instance_type = var.instance_type // we created a variable with this name
+# resource "aws_instance" "myec2" {
+#   count         = 2                 // tells Terraform to create 2 EC2 instances.
+#   ami           = var.ami           // This one is Amazon Linux 2 image in us-east-1 (free-tier)
+#   instance_type = var.instance_type // we created a variable with this name
 
-  vpc_security_group_ids = [aws_security_group.my_sg.id] // Attach this EC2 to the security group we just created.
+#   vpc_security_group_ids = [aws_security_group.my_sg.id] // Attach this EC2 to the security group we just created.
+
+#   tags = {
+#     Name = "${var.instance_name}-${count.index}" // ${count.index} is 0 for the first, 1 for the second — this gives names like MyFirstEC2-0 and MyFirstEC2-1.
+#   }
+# }
+
+
+resource "aws_instance" "myec2" {
+  for_each = var.instances //  loops over the map you defined.
+
+  ami                    = each.value // the AMI ID.
+  instance_type          = var.instance_type
+  vpc_security_group_ids = [aws_security_group.my_sg.id]
 
   tags = {
-    Name = var.instance_name
+    Name = each.key // "web1", "web2"
   }
 }
-
 // ----------Security Groups----------------
 
 resource "aws_security_group" "my_sg" {
@@ -61,9 +74,17 @@ resource "aws_security_group" "my_sg" {
 // ---------EIP Block---------------
 
 resource "aws_eip" "my_eip" {
-  instance = aws_instance.myec2.id // Tells AWS to associate this EIP with your EC2 instance.
-  
+  for_each = var.instances
+  # count = 2
+  // aws_eip.my_eip[0] attaches to aws_instance.myec2[0]
+  // aws_eip.my_eip[1] attaches to aws_instance.myec2[1]
+  // instance = aws_instance.myec2[count.index].id // Tells AWS to associate this EIP with your EC2 instance.
+
+  instance = aws_instance.myec2[each.key].id // AWS will attach the key in myec2 object, which is web1 and web2
+
   tags = {
-    Name = "MyElasticIP"
+    Name = "MyElasticIP-${each.key}"
   }
+  // Do not even try creating EIPs until all instances exist
+  depends_on = [aws_instance.myec2]
 }

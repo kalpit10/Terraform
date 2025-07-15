@@ -13,6 +13,21 @@ provider "aws" {
   region = "us-east-1"
 }
 
+// It is a block where we can define one or many named local values. DRY (dont repeat yourself code)
+locals {
+  instance_name_prefix = "MyProject"
+}
+
+// Telling terraform to access this bucket to store our tfstate file remotely
+// If we are creating the backend for the first time, we have to rerun terraform init
+terraform {
+  backend "s3" {
+    bucket = "kalpit-terraform-state-2025"
+    key    = "global/s3/terraform.tfstate" // the file path inside the bucket. You can organize like folders.
+    region = "us-east-1"
+  }
+}
+
 // --------EC2 Instances----------------
 
 # resource "aws_instance" "myec2" {
@@ -29,14 +44,14 @@ provider "aws" {
 
 
 resource "aws_instance" "myec2" {
-  for_each = var.instances //  loops over the map you defined.
+  for_each = var.instances //  loops over the map we defined.
 
   ami                    = each.value // the AMI ID.
   instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.my_sg.id]
 
   tags = {
-    Name = each.key // "web1", "web2"
+    Name = "${local.instance_name_prefix}-${each.key}" // "MyProject-web1", "MyProject-web2"
   }
 }
 // ----------Security Groups----------------
@@ -83,7 +98,7 @@ resource "aws_eip" "my_eip" {
   instance = aws_instance.myec2[each.key].id // AWS will attach the key in myec2 object, which is web1 and web2
 
   tags = {
-    Name = "MyElasticIP-${each.key}"
+    Name = "${local.instance_name_prefix}-eip-${each.key}"
   }
   // Do not even try creating EIPs until all instances exist
   depends_on = [aws_instance.myec2]

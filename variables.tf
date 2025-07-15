@@ -4,11 +4,11 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
-variable "ami" {
-  description = "EC2 Amazon Machine Image"
-  type        = string
-  default     = "ami-0c02fb55956c7d316"
-}
+# variable "ami" {
+#   description = "EC2 Amazon Machine Image"
+#   type        = string
+#   default     = "ami-0c02fb55956c7d316"
+# }
 
 variable "instance_name" {
   description = "EC2 instance name"
@@ -30,4 +30,14 @@ variable "instances" {
     "web1" = "ami-0c02fb55956c7d316"
     "web2" = "ami-0c02fb55956c7d316"
   }
+}
+
+variable "vpc_id" {
+  description = "The VPC ID to launch into"
+  type        = string
+}
+
+variable "subnet_id" {
+  description = "The subnet ID to launch into"
+  type        = string
 }

@@ -5,6 +5,14 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  // Telling terraform to access this bucket to store our tfstate file remotely
+  // If we are creating the backend for the first time, we have to rerun terraform init
+  backend "s3" {
+    bucket = "kalpit-terraform-state-2025"
+    key    = "global/s3/terraform.tfstate" // the file path inside the bucket. You can organize like folders.
+    region = "us-east-1"
+  }
 }
 
 // provider is a plugin that knows how to talk to a platform like AWS
@@ -18,88 +26,37 @@ locals {
   instance_name_prefix = "MyProject"
 }
 
-// Telling terraform to access this bucket to store our tfstate file remotely
-// If we are creating the backend for the first time, we have to rerun terraform init
-terraform {
-  backend "s3" {
-    bucket = "kalpit-terraform-state-2025"
-    key    = "global/s3/terraform.tfstate" // the file path inside the bucket. You can organize like folders.
-    region = "us-east-1"
-  }
+// --------EC2 Instances and Security Groups via Module----------------
+// Instead of creating EC2 + SG directly here, we moved it into a reusable module.
+// Now we just call the module and pass the needed variables.
+
+module "myservers" {
+  for_each = var.instances // loops over the map we defined.
+
+  source = "./modules/ec2_instance"
+
+  ami             = each.value // the AMI ID from the map.
+  instance_type   = var.instance_type
+  instance_name   = "${local.instance_name_prefix}-${each.key}" // will create names like MyProject-web1
+  vpc_id          = var.vpc_id
+  subnet_id       = var.subnet_id
+  ssh_allowed_ips = var.ssh_allowed_ips
 }
-
-// --------EC2 Instances----------------
-
-# resource "aws_instance" "myec2" {
-#   count         = 2                 // tells Terraform to create 2 EC2 instances.
-#   ami           = var.ami           // This one is Amazon Linux 2 image in us-east-1 (free-tier)
-#   instance_type = var.instance_type // we created a variable with this name
-
-#   vpc_security_group_ids = [aws_security_group.my_sg.id] // Attach this EC2 to the security group we just created.
-
-#   tags = {
-#     Name = "${var.instance_name}-${count.index}" // ${count.index} is 0 for the first, 1 for the second — this gives names like MyFirstEC2-0 and MyFirstEC2-1.
-#   }
-# }
-
-
-resource "aws_instance" "myec2" {
-  for_each = var.instances //  loops over the map we defined.
-
-  ami                    = each.value // the AMI ID.
-  instance_type          = var.instance_type
-  vpc_security_group_ids = [aws_security_group.my_sg.id]
-
-  tags = {
-    Name = "${local.instance_name_prefix}-${each.key}" // "MyProject-web1", "MyProject-web2"
-  }
-}
-// ----------Security Groups----------------
-
-resource "aws_security_group" "my_sg" {
-  //----- Inbound Rule for SSH-------
-  ingress {
-    from_port   = 22 // range of ports to allow (just 22 here, for SSH).
-    to_port     = 22
-    protocol    = "tcp"               // (SSH runs on TCP).
-    cidr_blocks = var.ssh_allowed_ips // means allow from any IP on the internet.
-  }
-
-  //---------Inbound Rule for HTTP-----------  
-  ingress {
-    from_port   = 80 // 80 → allows HTTP traffic.
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = -1 // Allow all outbound traffic on all protocols (-1 is AWS code for "all").
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "MySecurityGroup"
-  }
-}
-
 
 // ---------EIP Block---------------
+// This will attach an Elastic IP to each instance created via the module.
+// We have to use module output to get the instance ID.
 
 resource "aws_eip" "my_eip" {
   for_each = var.instances
-  # count = 2
-  // aws_eip.my_eip[0] attaches to aws_instance.myec2[0]
-  // aws_eip.my_eip[1] attaches to aws_instance.myec2[1]
-  // instance = aws_instance.myec2[count.index].id // Tells AWS to associate this EIP with your EC2 instance.
 
-  instance = aws_instance.myec2[each.key].id // AWS will attach the key in myec2 object, which is web1 and web2
+  // AWS will attach the EIP to the EC2 instance ID returned by the module output
+  instance = module.myservers[each.key].instance_id
 
   tags = {
     Name = "${local.instance_name_prefix}-eip-${each.key}"
   }
+
   // Do not even try creating EIPs until all instances exist
-  depends_on = [aws_instance.myec2]
+  depends_on = [module.myservers]
 }

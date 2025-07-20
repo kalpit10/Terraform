@@ -1,5 +1,5 @@
 resource "aws_security_group" "my_sg" {
-  name        = "${var.instance}-sg"
+  name        = "${var.instance_name}-sg"
   description = "Allow SSH"
   vpc_id      = var.vpc_id
 

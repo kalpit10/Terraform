@@ -1,3 +1,5 @@
+// These are like function parameters — no values assigned here.
+
 variable "ami" {}
 variable "instance_type" {}
 variable "instance_name" {}

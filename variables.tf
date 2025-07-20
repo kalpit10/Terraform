@@ -32,12 +32,3 @@ variable "instances" {
   }
 }
 
-variable "vpc_id" {
-  description = "The VPC ID to launch into"
-  type        = string
-}
-
-variable "subnet_id" {
-  description = "The subnet ID to launch into"
-  type        = string
-}

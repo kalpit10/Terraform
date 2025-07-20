@@ -6,7 +6,7 @@
 # }
 
 output "security_group_id" {
-  value = aws_security_group.my_sg.id
+  value = module.myservers["web1"].security_group_id
 }
 
 
@@ -22,5 +22,15 @@ output "security_group_id" {
 
 // aws_instance.myec2["web1"].public_ip
 output "instance_ips" {
-  value = { for name, instance in aws_instance.myec2 : name => instance.public_ip }
+  value = {
+    for name, mod in module.myservers : name => mod.public_ip
+  }
+}
+
+output "vpc_id" {
+  value = module.vpc.vpc_id
+}
+
+output "subnet_id" {
+  value = module.vpc.subnet_id
 }

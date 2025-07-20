@@ -26,10 +26,25 @@ locals {
   instance_name_prefix = "MyProject"
 }
 
-// --------EC2 Instances and Security Groups via Module----------------
+// ---------------VPC BLOCK--------------------
+
+module "vpc" {
+  source = "./modules/vpc"
+
+  vpc_cidr          = "10.0.0.0/16"
+  vpc_name          = "Kalpit-VPC"
+  subnet_cidr       = "10.0.1.0/24"
+  subnet_name       = "Kalpit-Subnet"
+  availability_zone = "us-east-1a"
+}
+
+
+// --------EC2 Instances via Module----------------
 // Instead of creating EC2 + SG directly here, we moved it into a reusable module.
 // Now we just call the module and pass the needed variables.
 
+
+// "myservers" is name for using the module
 module "myservers" {
   for_each = var.instances // loops over the map we defined.
 
@@ -38,10 +53,12 @@ module "myservers" {
   ami             = each.value // the AMI ID from the map.
   instance_type   = var.instance_type
   instance_name   = "${local.instance_name_prefix}-${each.key}" // will create names like MyProject-web1
-  vpc_id          = var.vpc_id
-  subnet_id       = var.subnet_id
+  vpc_id          = module.vpc.vpc_id
+  subnet_id       = module.vpc.subnet_id
   ssh_allowed_ips = var.ssh_allowed_ips
 }
+
+
 
 // ---------EIP Block---------------
 // This will attach an Elastic IP to each instance created via the module.

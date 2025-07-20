@@ -24,3 +24,13 @@ variable "availability_zone" {
   description = "AZ for the subnet"
   type        = string
 }
+
+variable "private_subnet_cidr" {
+  description = "CIDR for private subnet 1"
+  type        = string
+}
+
+variable "private_az" {
+  description = "AZ for the private subnet"
+  type        = string
+}
